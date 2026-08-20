@@ -15,7 +15,7 @@ depends=(
     'qt5-base'
     'kitty'
     'feh'
-    'xrandr'
+    'xorg-xrandr'
 )
 makedepends=('git' 'gcc' 'make' 'qt5-tools' 'pkg-config')
 conflicts=('sweetwm-git')
