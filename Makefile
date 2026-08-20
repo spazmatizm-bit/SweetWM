@@ -1,0 +1,33 @@
+CC = gcc
+CFLAGS = -Wall -O2 -I./src -Wno-unused-parameter
+LDFLAGS = -lX11 -lXrender -lXcomposite -lXdamage -lXfixes -lm
+
+SRC = src/main.c \
+      src/utils/colors.c \
+      src/utils/utils.c \
+      src/bar/bar.c \
+      src/bar/systray.c \
+      src/window/window.c \
+      src/spawn/spawn.c \
+      src/menu/menu.c \
+      src/config.c \
+      src/compositor/composite.c
+
+OBJ = $(SRC:.c=.o)
+TARGET = sweetwm
+
+all: $(TARGET)
+
+$(TARGET): $(OBJ)
+	$(CC) -o $@ $^ $(LDFLAGS)
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+clean:
+	rm -f $(OBJ) $(TARGET)
+
+install: $(TARGET)
+	cp $(TARGET) /usr/local/bin/
+
+.PHONY: all clean install

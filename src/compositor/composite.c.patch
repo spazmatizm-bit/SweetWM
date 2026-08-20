@@ -1,0 +1,10 @@
+// Add this at the top of composite.c after includes
+#ifndef GLX_GLXEXT_PROTOTYPES
+typedef void (*PFNGLXSWAPINTERVALEXTPROC)(Display*, GLXDrawable, int);
+PFNGLXSWAPINTERVALEXTPROC glXSwapIntervalEXT = NULL;
+#endif
+
+// In compositor_init, after creating context:
+#ifndef GLX_GLXEXT_PROTOTYPES
+    glXSwapIntervalEXT = (PFNGLXSWAPINTERVALEXTPROC)glXGetProcAddress((const GLubyte*)"glXSwapIntervalEXT");
+#endif

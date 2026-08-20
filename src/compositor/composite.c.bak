@@ -1,0 +1,34 @@
+#include "../sweetwm.h"
+#include "composite.h"
+
+void compositor_load_config() {
+    // Nothing
+}
+
+void compositor_init() {
+    printf("Compositor: disabled\n");
+}
+
+void compositor_add_window(Window win) {
+    // Nothing
+}
+
+void compositor_remove_window(Window win) {
+    // Nothing
+}
+
+void compositor_handle_damage(XDamageNotifyEvent *ev) {
+    // Nothing
+}
+
+void compositor_render_all() {
+    // Nothing
+}
+
+int compositor_get_damage_event() {
+    return 0;
+}
+
+int compositor_is_enabled() {
+    return 0;
+}

@@ -1,0 +1,449 @@
+#!/bin/bash
+# SweetWM TUI Settings - FIXED VERSION
+# Uses input dialogs instead of forms to avoid --form error
+
+export NEWT_COLORS='
+root=,black
+window=white,#2D1B3D
+border=white,#2D1B3D
+shadow=white,#2D1B3D
+title=white,#2D1B3D
+button=black,#9B4DCA
+actbutton=white,#9B4DCA
+checkbox=white,#2D1B3D
+actcheckbox=white,#9B4DCA
+entry=white,#1A0F24
+label=white,#2D1B3D
+listbox=white,#1A0F24
+actlistbox=white,#9B4DCA
+sellistbox=white,#9B4DCA
+actsellistbox=white,#4A2B5D
+'
+
+CONFIG_DIR="$HOME/.config/sweetwm"
+CONFIG_FILE="$CONFIG_DIR/config.swwm"
+
+mkdir -p "$CONFIG_DIR"
+
+# Create default config if missing
+if [ ! -f "$CONFIG_FILE" ]; then
+    cat > "$CONFIG_FILE" << 'EOC'
+theme.background = #2D1B3D
+theme.foreground = #E1BEE7
+theme.accent = #9B4DCA
+theme.border_active = #9B4DCA
+theme.border_inactive = #4A2B5D
+bar.position = top
+bar.height = 28
+window.border_width = 2
+window.title_height = 22
+keyboard.layouts = us
+keyboard.toggle = alt_space_toggle
+keyboard.repeat_rate = 30
+keyboard.repeat_delay = 500
+keybinds.terminal = Ctrl+Shift+T
+keybinds.close = Mod4+Q
+keybinds.minimize = Mod4+M
+keybinds.maximize = Mod4+F
+keybinds.fullscreen = Mod4+F11
+default.terminal = kitty
+default.file_manager = thunar
+default.browser = firefox
+default.editor = mousepad
+wallpaper.path = /usr/share/backgrounds/default.jpg
+EOC
+fi
+
+get_config() {
+    grep "^$1\.$2" "$CONFIG_FILE" 2>/dev/null | cut -d'=' -f2 | sed 's/^ //;s/ $//' || echo "$3"
+}
+
+set_config() {
+    sed -i "/^$1\.$2/d" "$CONFIG_FILE" 2>/dev/null
+    echo "$1.$2 = $3" >> "$CONFIG_FILE"
+}
+
+reload_sweetwm() {
+    local pid=$(pgrep sweetwm 2>/dev/null)
+    if [ -n "$pid" ]; then
+        kill -HUP "$pid" 2>/dev/null
+        whiptail --msgbox "SweetWM reloaded!" 6 30
+        return 0
+    else
+        whiptail --msgbox "SweetWM not running" 6 30
+        return 1
+    fi
+}
+
+main_menu() {
+    while true; do
+        choice=$(whiptail --title " SweetWM Settings " \
+            --menu "SweetWM Configuration" 22 55 12 \
+            "1" "Theme (colors)" \
+            "2" "Wallpaper" \
+            "3" "Bar (position, height)" \
+            "4" "Monitors" \
+            "5" "Keyboard" \
+            "6" "Windows (border, title)" \
+            "7" "Keybinds" \
+            "8" "Default Apps" \
+            "9" "Startup" \
+            "10" "View Config" \
+            "11" "Reload SweetWM" \
+            "12" "Exit" \
+            3>&1 1>&2 2>&3)
+        
+        case $choice in
+            1) theme_menu ;;
+            2) wallpaper_menu ;;
+            3) bar_menu ;;
+            4) monitor_menu ;;
+            5) keyboard_menu ;;
+            6) window_menu ;;
+            7) keybind_menu ;;
+            8) apps_menu ;;
+            9) startup_menu ;;
+            10) view_config ;;
+            11) reload_sweetwm ;;
+            12) exit 0 ;;
+            *) break ;;
+        esac
+    done
+}
+
+# 1. Theme - using separate input dialogs
+theme_menu() {
+    local bg=$(get_config "theme" "background" "#2D1B3D")
+    local fg=$(get_config "theme" "foreground" "#E1BEE7")
+    local accent=$(get_config "theme" "accent" "#9B4DCA")
+    local border=$(get_config "theme" "border_active" "#9B4DCA")
+    local inactive=$(get_config "theme" "border_inactive" "#4A2B5D")
+    
+    local new_bg=$(whiptail --inputbox "Background color (hex):" 8 50 "$bg" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+    [ -n "$new_bg" ] && bg="$new_bg"
+    
+    local new_fg=$(whiptail --inputbox "Foreground color (hex):" 8 50 "$fg" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+    [ -n "$new_fg" ] && fg="$new_fg"
+    
+    local new_accent=$(whiptail --inputbox "Accent color (hex):" 8 50 "$accent" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+    [ -n "$new_accent" ] && accent="$new_accent"
+    
+    local new_border=$(whiptail --inputbox "Border Active (hex):" 8 50 "$border" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+    [ -n "$new_border" ] && border="$new_border"
+    
+    local new_inactive=$(whiptail --inputbox "Border Inactive (hex):" 8 50 "$inactive" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+    [ -n "$new_inactive" ] && inactive="$new_inactive"
+    
+    set_config "theme" "background" "$bg"
+    set_config "theme" "foreground" "$fg"
+    set_config "theme" "accent" "$accent"
+    set_config "theme" "border_active" "$border"
+    set_config "theme" "border_inactive" "$inactive"
+    
+    reload_sweetwm
+    whiptail --msgbox "Theme saved!\n\nbg: $bg\nfg: $fg\naccent: $accent" 12 50
+}
+
+# 2. Wallpaper
+wallpaper_menu() {
+    local current=$(get_config "wallpaper" "path" "")
+    local path=$(whiptail --inputbox "Path to wallpaper image:" 8 60 "$current" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+    
+    if [ -n "$path" ] && [ -f "$path" ]; then
+        feh --bg-fill "$path" 2>/dev/null
+        set_config "wallpaper" "path" "$path"
+        whiptail --msgbox "Wallpaper set to:\n$path" 8 60
+    elif [ -n "$path" ]; then
+        whiptail --msgbox "File not found: $path" 6 50
+    fi
+}
+
+# 3. Bar
+bar_menu() {
+    local pos=$(get_config "bar" "position" "top")
+    local height=$(get_config "bar" "height" "28")
+    
+    local new_pos=$(whiptail --inputbox "Bar position (top/bottom/left/right):" 8 50 "$pos" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+    [ -n "$new_pos" ] && pos="$new_pos"
+    
+    local new_height=$(whiptail --inputbox "Bar height (pixels):" 8 50 "$height" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+    [ -n "$new_height" ] && height="$new_height"
+    
+    set_config "bar" "position" "$pos"
+    set_config "bar" "height" "$height"
+    
+    reload_sweetwm
+    whiptail --msgbox "Bar settings saved!\n\nPosition: $pos\nHeight: $height" 10 50
+}
+
+# 4. Monitors
+monitor_menu() {
+    if ! command -v xrandr &>/dev/null; then
+        whiptail --msgbox "xrandr not found!\nInstall: sudo pacman -S xorg-xrandr" 8 50
+        return
+    fi
+    
+    local monitors=$(xrandr --listmonitors 2>/dev/null | tail -n +2 | awk '{print $NF}')
+    local mon_list=()
+    for m in $monitors; do
+        mon_list+=("$m" "$m")
+    done
+    
+    if [ ${#mon_list[@]} -eq 0 ]; then
+        whiptail --msgbox "No monitors found!" 6 30
+        return
+    fi
+    
+    local choice=$(whiptail --menu "Select monitor:" 15 50 10 "${mon_list[@]}" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] || [ -z "$choice" ] && return
+    
+    # Get modes
+    local modes=()
+    while IFS= read -r line; do
+        if echo "$line" | grep -qE '[0-9]+x[0-9]+.*[0-9]+\.[0-9]+'; then
+            local mode=$(echo "$line" | awk '{print $1}')
+            local rates=$(echo "$line" | awk '{for(i=2;i<=NF;i++) print $i}' | grep -E '^[0-9]+\.[0-9]+' | sed 's/\*//g;s/+//g')
+            for rate in $rates; do
+                modes+=("$mode@$rate" "$mode @ $rate Hz")
+            done
+        fi
+    done <<< "$(xrandr --query 2>/dev/null | grep -A 20 "^$choice connected")"
+    
+    if [ ${#modes[@]} -eq 0 ]; then
+        whiptail --msgbox "No modes found for $choice" 6 40
+        return
+    fi
+    
+    local mode_choice=$(whiptail --menu "Monitor: $choice" "Choose resolution:" 20 60 15 "${modes[@]}" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] || [ -z "$mode_choice" ] && return
+    
+    local res=$(echo "$mode_choice" | cut -d'@' -f1)
+    local rate=$(echo "$mode_choice" | cut -d'@' -f2)
+    
+    xrandr --output "$choice" --mode "$res" --rate "$rate" 2>/dev/null
+    if [ $? -eq 0 ]; then
+        set_config "monitor" "$choice.resolution" "$res"
+        set_config "monitor" "$choice.rate" "$rate"
+        whiptail --msgbox "$choice\n$res @ $rate Hz" 8 40
+    else
+        whiptail --msgbox "Failed to set mode!" 6 30
+    fi
+}
+
+# 5. Keyboard
+keyboard_menu() {
+    while true; do
+        local layouts=$(get_config "keyboard" "layouts" "us")
+        local toggle=$(get_config "keyboard" "toggle" "alt_space_toggle")
+        
+        local action=$(whiptail --title "Keyboard" \
+            --menu "Current: $layouts\nToggle: $toggle" 18 50 5 \
+            "1" "Select layouts" \
+            "2" "Toggle shortcut" \
+            "3" "Repeat settings" \
+            "4" "Apply" \
+            "5" "Back" \
+            3>&1 1>&2 2>&3)
+        
+        case $action in
+            1) layout_select ;;
+            2) toggle_select ;;
+            3) repeat_settings ;;
+            4) apply_keyboard; whiptail --msgbox "Keyboard applied!" 6 30 ;;
+            5) return ;;
+            *) return ;;
+        esac
+    done
+}
+
+layout_select() {
+    local layouts_list=(
+        "us" "US English"
+        "ru" "Russian"
+        "uk" "Ukrainian"
+        "de" "German"
+        "fr" "French"
+        "es" "Spanish"
+        "it" "Italian"
+        "pt" "Portuguese"
+        "jp" "Japanese"
+        "cn" "Chinese"
+        "kr" "Korean"
+        "tr" "Turkish"
+        "pl" "Polish"
+    )
+    
+    local first=$(whiptail --menu "Primary layout:" 20 50 15 "${layouts_list[@]}" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] || [ -z "$first" ] && return
+    
+    local second=$(whiptail --menu "Secondary layout (or Cancel):" 20 50 15 "none" "None" "${layouts_list[@]}" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+    
+    local result="$first"
+    [ "$second" != "none" ] && [ -n "$second" ] && result="$first,$second"
+    
+    set_config "keyboard" "layouts" "$result"
+    whiptail --msgbox "Layouts: $result" 6 40
+}
+
+toggle_select() {
+    local choice=$(whiptail --menu "Toggle shortcut:" 16 50 8 \
+        "alt_space_toggle" "Alt+Space" \
+        "alt_shift_toggle" "Alt+Shift" \
+        "ctrl_shift_toggle" "Ctrl+Shift" \
+        "super_space_toggle" "Super+Space" \
+        "caps_toggle" "Caps Lock" \
+        "none" "Disabled" \
+        3>&1 1>&2 2>&3)
+    [ $? -eq 0 ] && [ -n "$choice" ] && set_config "keyboard" "toggle" "$choice"
+}
+
+repeat_settings() {
+    local rate=$(get_config "keyboard" "repeat_rate" "30")
+    local delay=$(get_config "keyboard" "repeat_delay" "500")
+    
+    local new_rate=$(whiptail --inputbox "Repeat rate (1-50):" 8 50 "$rate" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+    [ -n "$new_rate" ] && rate="$new_rate"
+    
+    local new_delay=$(whiptail --inputbox "Repeat delay (ms):" 8 50 "$delay" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+    [ -n "$new_delay" ] && delay="$new_delay"
+    
+    set_config "keyboard" "repeat_rate" "$rate"
+    set_config "keyboard" "repeat_delay" "$delay"
+    whiptail --msgbox "Repeat saved!" 6 30
+}
+
+apply_keyboard() {
+    local layouts=$(get_config "keyboard" "layouts" "us")
+    local toggle=$(get_config "keyboard" "toggle" "alt_space_toggle")
+    local rate=$(get_config "keyboard" "repeat_rate" "30")
+    local delay=$(get_config "keyboard" "repeat_delay" "500")
+    
+    setxkbmap -layout "$layouts" -option "grp:$toggle" 2>/dev/null
+    xset r rate "$delay" "$rate" 2>/dev/null
+}
+
+# 6. Windows
+window_menu() {
+    local bw=$(get_config "window" "border_width" "2")
+    local th=$(get_config "window" "title_height" "22")
+    
+    local new_bw=$(whiptail --inputbox "Border width (pixels):" 8 50 "$bw" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+    [ -n "$new_bw" ] && bw="$new_bw"
+    
+    local new_th=$(whiptail --inputbox "Title height (pixels):" 8 50 "$th" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+    [ -n "$new_th" ] && th="$new_th"
+    
+    set_config "window" "border_width" "$bw"
+    set_config "window" "title_height" "$th"
+    
+    reload_sweetwm
+    whiptail --msgbox "Window settings saved!\n\nBorder: $bw\nTitle: $th" 10 50
+}
+
+# 7. Keybinds
+keybind_menu() {
+    local term=$(get_config "keybinds" "terminal" "Ctrl+Shift+T")
+    local close=$(get_config "keybinds" "close" "Mod4+Q")
+    local min=$(get_config "keybinds" "minimize" "Mod4+M")
+    local max=$(get_config "keybinds" "maximize" "Mod4+F")
+    local full=$(get_config "keybinds" "fullscreen" "Mod4+F11")
+    
+    local new_term=$(whiptail --inputbox "Terminal keybind:" 8 50 "$term" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+    [ -n "$new_term" ] && term="$new_term"
+    
+    local new_close=$(whiptail --inputbox "Close window keybind:" 8 50 "$close" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+    [ -n "$new_close" ] && close="$new_close"
+    
+    local new_min=$(whiptail --inputbox "Minimize keybind:" 8 50 "$min" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+    [ -n "$new_min" ] && min="$new_min"
+    
+    local new_max=$(whiptail --inputbox "Maximize keybind:" 8 50 "$max" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+    [ -n "$new_max" ] && max="$new_max"
+    
+    local new_full=$(whiptail --inputbox "Fullscreen keybind:" 8 50 "$full" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+    [ -n "$new_full" ] && full="$new_full"
+    
+    set_config "keybinds" "terminal" "$term"
+    set_config "keybinds" "close" "$close"
+    set_config "keybinds" "minimize" "$min"
+    set_config "keybinds" "maximize" "$max"
+    set_config "keybinds" "fullscreen" "$full"
+    
+    reload_sweetwm
+    whiptail --msgbox "Keybinds saved!" 6 30
+}
+
+# 8. Default Apps
+apps_menu() {
+    local term=$(get_config "default" "terminal" "kitty")
+    local fm=$(get_config "default" "file_manager" "thunar")
+    local browser=$(get_config "default" "browser" "firefox")
+    local editor=$(get_config "default" "editor" "mousepad")
+    
+    local new_term=$(whiptail --inputbox "Terminal command:" 8 50 "$term" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+    [ -n "$new_term" ] && term="$new_term"
+    
+    local new_fm=$(whiptail --inputbox "File manager command:" 8 50 "$fm" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+    [ -n "$new_fm" ] && fm="$new_fm"
+    
+    local new_browser=$(whiptail --inputbox "Browser command:" 8 50 "$browser" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+    [ -n "$new_browser" ] && browser="$new_browser"
+    
+    local new_editor=$(whiptail --inputbox "Editor command:" 8 50 "$editor" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+    [ -n "$new_editor" ] && editor="$new_editor"
+    
+    set_config "default" "terminal" "$term"
+    set_config "default" "file_manager" "$fm"
+    set_config "default" "browser" "$browser"
+    set_config "default" "editor" "$editor"
+    
+    whiptail --msgbox "Default apps saved!" 6 30
+}
+
+# 9. Startup
+startup_menu() {
+    local content=$(cat "$CONFIG_DIR/autostart.sh" 2>/dev/null || echo "#!/bin/bash")
+    local new_content=$(whiptail --editbox "$content" 20 60 3>&1 1>&2 2>&3)
+    
+    [ $? -ne 0 ] && return
+    
+    if [ -n "$new_content" ]; then
+        echo "$new_content" > "$CONFIG_DIR/autostart.sh"
+        chmod +x "$CONFIG_DIR/autostart.sh"
+        whiptail --msgbox "Autostart saved!" 6 30
+    fi
+}
+
+# 10. View Config
+view_config() {
+    if [ -f "$CONFIG_FILE" ]; then
+        whiptail --textbox "$CONFIG_FILE" 25 60
+    else
+        whiptail --msgbox "Config file not found!" 6 30
+    fi
+}
+
+# Start
+main_menu
