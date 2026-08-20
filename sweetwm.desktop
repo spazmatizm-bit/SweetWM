@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=SweetWM
+Comment=A custom X11 window manager with compositing and Qt menu
+Exec=/usr/bin/sweetwm
+Icon=preferences-system-windows
+Type=Application
+DesktopNames=SweetWM
