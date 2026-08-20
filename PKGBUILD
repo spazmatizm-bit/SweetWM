@@ -26,10 +26,7 @@ source=(
 )
 sha256sums=('SKIP' 'SKIP')
 
-pkgver() {
-  cd "$srcdir/$pkgname"
-  git describe --long --tags | sed 's/\(.*\)-g.*/\1/;s/^v//' || echo "r$(git rev-list --count HEAD).$(git rev-parse --short HEAD)"
-}
+# Функцию pkgver() УДАЛЯЕМ полностью
 
 build() {
   cd "$srcdir/$pkgname"
