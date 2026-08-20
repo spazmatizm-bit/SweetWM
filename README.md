@@ -12,3 +12,6 @@ in this wm we have
 hope you will enjoy using my Sweet Window Manager
 
 gl
+
+P.S. If something breaks — it's not a bug, it's a feature.
+And if it really breaks — open an issue, I'll try to fix it. Maybe.
